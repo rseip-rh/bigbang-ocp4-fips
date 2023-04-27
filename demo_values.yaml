@@ -1,0 +1,415 @@
+openshift: true
+
+domain: demo.rseip.dev
+
+monitoring:
+  enabled: true
+  git:
+    tag: null
+    branch: "cmays-openshift-1"
+  values:
+    alertmanager:
+      enabled: true
+
+    prometheusOperator:
+      alertmanagerInstanceNamespaces: ['monitoring']
+      alertmanagerConfigNamespaces: ['monitoring']
+      prometheusInstanceNamespaces: ['monitoring']
+      thanosRulerInstanceNamespaces: ['monitoring']
+      #namespaces:
+        #releaseNamespace: true
+      kubeletService:
+        enabled: false
+
+    kube-state-metrics:
+      resources:
+        limits:
+          cpu: 500m
+          memory: 512Mi
+        requests:
+          cpu: 100m
+          memory: 128Mi
+
+    prometheus:
+
+      thanosService:
+        enabled: true
+      thanosServiceMonitor: 
+        enabled: true
+
+      prometheusSpec:
+        retention: 2d
+
+        thanos:
+          baseImage: registry1.dso.mil/ironbank/opensource/thanos/thanos
+          version: v0.29.0 
+        podMonitorNamespaceSelector:
+          matchExpressions:
+            - key: openshift.io/cluster-monitoring
+              operator: NotIn
+              values:
+                - 'true'
+        probeNamespaceSelector:
+          matchExpressions:
+            - key: openshift.io/cluster-monitoring
+              operator: NotIn
+              values:
+                - 'true'
+        serviceMonitorNamespaceSelector:
+          matchExpressions:
+            - key: openshift.io/cluster-monitoring
+              operator: NotIn
+              values:
+                - 'true'
+
+eckoperator:
+  enabled: true
+  git:
+    tag: null
+    branch: "cmays-openshift-1"
+
+fluentbit:
+  enabled: true
+  git:
+    tag: null
+    branch: "cmays-openshift-1"
+  values:
+    podSecurityContext: null
+    openShift:
+      securityContextConstraints:
+        create: false
+    securityContext:
+      seLinuxOptions: null
+      privileged: true
+
+logging:
+  enabled: true
+  git:
+    tag: null
+    branch: "cmays-openshift-1"
+  values:
+    kibana:
+      count: 2
+      resources:
+        requests:
+          cpu: 400m
+          memory: 1Gi
+        limits:
+          cpu: 1000m
+          memory: 2Gi
+    elasticsearch:
+      master:
+        count: 3
+        resources:
+          requests:
+            cpu: 2000m
+            memory: 4Gi
+          limits:
+            cpu: 2000m
+            memory: 4Gi
+        heap:
+          min: 3g
+          max: 3g
+      data:
+        count: 3
+        resources:
+          requests:
+            cpu: 2000m
+            memory: 8Gi
+          limits:
+            cpu: 2000m
+            memory: 8Gi
+        heap: 
+          min: 7g
+          max: 7g
+
+clusterAuditor:
+  enabled: true
+  git:
+    tag: null
+    branch: "cmays-openshift-1"
+  values:
+    resources:
+      requests:
+        cpu: 400m
+        memory: 2Gi
+      limits:
+        cpu: null
+        memory: null
+
+gatekeeper:
+  enabled: true
+  git: 
+    tag: 3.10.0-bb.2
+  values:
+    replicas: 3 
+    controllerManager:
+      resources:
+        requests:
+          cpu: 100m
+          memory: 512Mi
+        limits:
+          cpu: 1000m
+          memory: 1024Mi
+    audit:
+      resources:
+        requests:
+          cpu: 400m
+          memory: 768Mi
+        limits:
+          cpu: 1000m
+          memory: 1024Mi
+    violations:
+      allowedDockerRegistries:
+        enforcementAction: dryrun
+        parameters:
+          repos: 
+            - registry1.dso.mil
+            - quay.io
+            - registry.redhat.io
+            - image-registry.openshift-image-registry.svc
+      bannedImageTags:
+        enforcementAction: dryrun
+      selinuxPolicy:
+        enabled: false
+      httpsOnly:
+        enforcementAction: dryrun
+        parameters: 
+          excludedResources: 
+            - harbor/cm-acme-http-solver-.*
+            - gitlab/cm-acme-http-solver-.*
+      uniqueIngressHost:
+        enforcementAction: dryrun
+        parameters:
+          excludedResources:
+            - harbor/cm-acme-http-solver-.*
+            - gitlab/cm-acme-http-solver-.*
+      
+istiooperator:
+  enabled: true
+  git:
+    tag: null
+    branch: "cmays-openshift-1"
+
+istio:
+  enabled: true
+  git:
+    tag: null
+    branch: "cmays-openshift-1"
+  values:
+    profile: "openshift"
+    ingressGateways:
+      public-ingressgateway:
+        k8s: 
+          hpaSpec:
+            minReplicas: 3
+            maxReplicas: 5
+
+jaeger:
+  enabled: true
+  git:
+    tag: null
+    branch: "cmays-openshift-1"
+  values:
+    jaeger:
+      spec: 
+        ingress:
+          security: none
+
+kiali: 
+  enabled: true
+  git:
+    tag: null
+    branch: "cmays-openshift-1"
+  values: 
+    cr: 
+      spec: 
+        identity: 
+          cert_file: ""
+          private_key_file: ""
+
+twistlock:
+  enabled: false # twistlock requires a license to work, so we're disabling it
+
+addons:
+  sonarqube: 
+    enabled: true
+    git:
+      tag: null
+      branch: "cmays-openshift-1"
+    values:
+      serviceAccount:
+        create: true
+      postgresql:
+        securityContext: 
+          enabled: true 
+        serviceAccount: 
+          enabled: true
+
+  argocd: 
+    enabled: true
+    git:
+      tag: null
+      branch: "cmays-openshift-1"
+    values: 
+      openshift: 
+        enabled: true
+      configs: 
+        cm: 
+          resource.exclusions: |
+            - apiGroups:
+              - "tekton.dev"
+              kinds:
+              - "PipelineRun"
+              clusters:
+              - "*"
+        params: 
+          redis.server: argocd-argocd-redis-bb-master:6379
+
+  gitlab:
+    enabled: true
+    istio: 
+      enabled: false
+      injection: disabled
+    flux:
+      timeout: 30m
+    values: 
+      istio:
+        gitlab: 
+          enabled: false
+        registry: 
+          enabled: false
+      global: 
+        hosts: 
+          domain: demo.rseip.dev
+          gitlab: 
+            name: gitlab.demo.rseip.dev
+          registry: 
+            name: registry.demo.rseip.dev
+
+        ingress: 
+          enabled: true
+          tls: 
+            enabled: true
+          class: none
+          annotations: 
+            route.openshift.io/termination: "edge"
+            kubernetes.io/ingress.allow-http: "false"
+            kubernetes.io/tls-acme: true
+            cert-manager.io/cluster-issuer: letsencrypt
+        appConfig: 
+          initialDefaults: 
+            signupEnabled: false
+      nginx-ingress: 
+        enabled: false
+      certmanager:
+        install: false
+      registry: 
+        ingress: 
+          enabled: true
+          tls: 
+            secretName: gitlab-registry-tls
+      gitlab: 
+        webservice: 
+          ingress: 
+            enabled: true
+            tls:
+              secretName: gitlab-gitlab-tls
+        gitlab-shell: 
+          enabled: false
+      minio: 
+        ingress: 
+          enabled: false
+
+  gitlabRunner:
+    enabled: true
+
+wrapper:
+  git: 
+    repo: https://repo1.dso.mil/big-bang/apps/wrapper
+    path: chart
+    branch: main
+packages:  
+  harbor:
+    enabled: true
+    istio:
+      injection: false    
+    git: 
+      repo: https://repo1.dso.mil/big-bang/apps/sandbox/harbor.git
+      path: chart
+      tag: 1.10.2-bb.6
+    values: 
+      updateStrategy:
+        type: Recreate
+      expose:
+        type: ingress
+        ingress:
+          annotations:
+            route.openshift.io/termination: "edge"
+            kubernetes.io/ingress.allow-http: "false"
+            kubernetes.io/tls-acme: "true"
+            cert-manager.io/cluster-issuer: letsencrypt
+          hosts: 
+            core: harbor.demo.rseip.dev
+            notary: harbor-notary.demo.rseip.dev
+        tls:
+          enabled: true
+          certSource: secret
+          secret: 
+            secretName: harbor-letsencrypt-cert
+            notarySecretName: harbor-notary-letsencrypt-cert
+      core: 
+        secretName: harbor-letsencrypt-cert
+        replicas: 2
+        resources:
+          requests:
+            memory: 512Mi
+            cpu: 500m
+          limits:
+            memory: 1024Mi
+            cpu: 1000m
+      internalTLS:
+        enabled: false
+      externalURL: https://harbor.demo.rseip.dev
+      redis:
+        external:
+          addr: harbor-redis-bb-master:6379
+      registry:
+        registry: 
+          resources: 
+            requests: 
+              memory: 512Mi
+              cpu: 500m
+            limits: 
+              memory: 1024Mi
+              cpu: 1000m
+        controller:
+          resources:
+            requests:
+              memory: 512Mi
+              cpu: 500m
+            limits:
+              memory: 1024Mi
+              cpu: 1000m
+        replicas: 1 
+      notary: 
+        server: 
+          resources: 
+            requests: 
+              memory: 256Mi
+              cpu: 100m
+            limits: 
+              memory: 512Mi
+              cpu: 500m
+        signer:
+          resources:
+            requests:
+              memory: 256Mi
+              cpu: 100m
+            limits:
+              memory: 512Mi
+              cpu: 500m
+      bbtests: 
+        enabled: false
+      networkPolicies: 
+        enabled: true
